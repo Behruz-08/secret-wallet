@@ -1,71 +1,158 @@
 
+
+
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../constants/currency';
-import { getTransactions } from '../services/apiServices';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'TransactionHistory'>;
 
 interface Transaction {
+  blockNumber: string;
+  timeStamp: string;
   hash: string;
+  from: string;
+  to: string;
+  value: string;
+  gas: string;
+  gasPrice: string;
+  isError: string;
+  txreceipt_status: string;
+  input: string;
+  contractAddress: string;
+  cumulativeGasUsed: string;
+  gasUsed: string;
+  confirmations: string;
 }
+
+interface ApiResponse<T> {
+  status: string;
+  message: string;
+  result: T[];
+}
+
+type Props = NativeStackScreenProps<RootStackParamList, 'TransactionHistory'>;
 
 const TransactionHistoryScreen = ({ route }: Props) => {
   const { address, network } = route.params;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
-    const loadTransactions = async () => {
-      try {
-        const txs = await getTransactions(address, 0, 99999999, 1, 10, 'asc', network);
-        console.log('Полученные транзакции:', txs);
-        setTransactions(txs);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error('Ошибка загрузки транзакций:', error.message);
-        } else {
-          console.error('Пойман нестандартный объект ошибки:', error);
-        }
+    const fetchTransactions = async () => {
+      let apiUrl;
+      let apiKey;
+
+            if (network === 'polygonMainnet') {
+        apiUrl = 'https://api-polygonscan.com';
+        apiKey = 'D76AKR6KAGRA5XSK19UTQWCPAV4J5C7JEM';
+      } else if (network === 'ethMainnet') {
+        apiUrl = 'https://api.etherscan.io';
+        apiKey = '555FINDADVVENJ1DQUNYPJEQZ6KYUV2SFM';
       }
+
+
+
+      const sentResponse = await axios.get<ApiResponse<Transaction>>(
+        `${apiUrl}/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${apiKey}`
+      );
+      const receivedResponse = await axios.get<ApiResponse<Transaction>>(
+        `${apiUrl}/api?module=account&action=txlist&toaddress=${address}&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=${apiKey}`
+      );
+
+      const allTransactions = [
+        ...sentResponse.data.result,
+        ...receivedResponse.data.result,
+      ].filter(transaction => transaction.hash);
+
+      // Удаляем дубли по хэшу
+      const transactionMap = new Map<string, Transaction>();
+      allTransactions.forEach(transaction => {
+        transactionMap.set(transaction.hash, transaction);
+      });
+      const uniqueTransactions = Array.from(transactionMap.values());
+
+      // Сортируем по убыванию времени
+      const sortedTransactions = uniqueTransactions.sort(
+        (a, b) => Number(b.timeStamp) - Number(a.timeStamp)
+      );
+
+      setTransactions(sortedTransactions);
     };
-    loadTransactions();
+
+    fetchTransactions();
   }, [address, network]);
 
+  const getSymbol = (network: string): string => {
+    switch (network) {
+      case 'polygonMainnet':
+        return 'MATIC';
+      case 'ethMainnet':
+        return 'ETH';
+      default:
+        return '';
+    }
+  };
+
+  const formatValue = (value: string, symbol: string): string => {
+    const wei = parseInt(value, 10);
+    const amount = wei / 1e18;
+    return `${amount} ${symbol}`;
+  };
+
+  // Формируем ссылку для детальной страницы транзакции
+  const openTxLink = (hash: string) => {
+    let url = '';
+    if (network === 'polygonMainnet') {
+      url = `https://polygonscan.com/tx/${hash}`;
+    } else if (network === 'ethMainnet') {
+      url = `https://etherscan.io/tx/${hash}`;
+    }
+    Linking.openURL(url).catch(err =>
+      console.error('Не удалось открыть ссылку', err),
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Transaction History</Text>
+    <View>
       <FlatList
         data={transactions}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.hash}>{item.hash}</Text>
-          </View>
-        )}
-        keyExtractor={(item, index) => (item.hash ? item.hash : index.toString())}
+        keyExtractor={(item, index) => `${item.hash}-${index}`}
+        ListEmptyComponent={<Text>No transactions found</Text>}
+        renderItem={({ item }) => {
+          const symbol = getSymbol(network);
+          const formattedValue = formatValue(item.value, symbol);
+
+          return (
+            <TouchableOpacity onPress={() => openTxLink(item.hash)}>
+              <View style={styles.transactionItem}>
+                <Text style={styles.hash}>
+                  Tx: {item.hash.substring(0, 16)}...
+                </Text>
+                <Text>From: {item.from.substring(0, 8)}...</Text>
+                <Text>To: {item.to.substring(0, 8)}...</Text>
+                <Text>Amount: {formattedValue}</Text>
+                <Text>
+                  Date:{' '}
+                  {new Date(Number(item.timeStamp) * 1000).toLocaleDateString()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  item: {
-    padding: 10,
+  transactionItem: {
+    padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#e0e0e0',
   },
   hash: {
-    fontFamily: 'monospace',
-    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 5,
   },
 });
 

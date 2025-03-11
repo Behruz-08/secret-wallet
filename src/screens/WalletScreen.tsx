@@ -29,9 +29,10 @@ const networks: { name: string; key: NetworkType }[] = [
 
 const WalletScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { currentAccount, balance, network, setNetwork } = useWallet();
+  // const { currentAccount, balance, network, setNetwork, clearWallet } = useWallet();
+  const { addAccount, switchAccount, accounts, currentAccountIndex,currentAccount,clearWallet,setNetwork,network,balance } = useWallet();
   const [modalVisible, setModalVisible] = useState(false);
-
+  const [forceUpdate, setForceUpdate] = useState(false);
   const handleSendPress = useCallback(() => {
     currentAccount && navigation.navigate('Send', { network });
   }, [navigation, currentAccount, network]);
@@ -39,6 +40,16 @@ const WalletScreen = () => {
   const handleTransactionHistoryPress = useCallback(() => {
     currentAccount && navigation.navigate('TransactionHistory', { address: currentAccount.address, network });
   }, [navigation, currentAccount, network]);
+
+  const handleLogout = useCallback(async () => {
+    await clearWallet();
+    setForceUpdate(prev => !prev);
+    // navigation.navigate('Registration');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Registration' }],
+    });
+  }, [clearWallet, navigation]);
 
   return (
     <View style={styles.container}>
@@ -50,6 +61,24 @@ const WalletScreen = () => {
           loading={false}
         />
       )}
+
+
+<Button mode="outlined" onPress={() => addAccount()} style={styles.button}>
+  Добавить новый кошелек
+</Button>
+
+// Добавить список аккаунтов для переключения
+{accounts.map((account, index) => (
+  <Button
+    key={index}
+    mode="outlined"
+    onPress={() => switchAccount(index)}
+    style={styles.button}
+    disabled={currentAccountIndex === index}
+  >
+    wallet {index + 1}
+  </Button>
+))}
 
       <Button mode="contained" onPress={handleSendPress} style={styles.button}>
         Send {currencyByNetwork[network]}
@@ -69,6 +98,10 @@ const WalletScreen = () => {
 
       <Button mode="outlined" onPress={() => setModalVisible(true)}>
         {networks.find(n => n.key === network)?.name || 'Select Network'}
+      </Button>
+
+      <Button mode="outlined" onPress={handleLogout} style={styles.button}>
+        Выйти
       </Button>
 
       <NetworkModal

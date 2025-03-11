@@ -105,7 +105,7 @@ const getTransactionsFromEtherscanLike = async (
   return response.data.result;
 };
 
-// Унифицированная функция получения транзакций
+//  функция получения транзакций
 export const getTransactions = async (
   address: string,
   startBlock: number,
