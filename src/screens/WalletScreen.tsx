@@ -29,7 +29,8 @@ const networks: { name: string; key: NetworkType }[] = [
 
 const WalletScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { currentAccount, balance, network, setNetwork, clearWallet } = useWallet();
+  // const { currentAccount, balance, network, setNetwork, clearWallet } = useWallet();
+  const { addAccount, switchAccount, accounts, currentAccountIndex,currentAccount,clearWallet,setNetwork,network,balance } = useWallet();
   const [modalVisible, setModalVisible] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(false);
   const handleSendPress = useCallback(() => {
@@ -60,6 +61,24 @@ const WalletScreen = () => {
           loading={false}
         />
       )}
+
+
+<Button mode="outlined" onPress={() => addAccount()} style={styles.button}>
+  Добавить новый кошелек
+</Button>
+
+// Добавить список аккаунтов для переключения
+{accounts.map((account, index) => (
+  <Button
+    key={index}
+    mode="outlined"
+    onPress={() => switchAccount(index)}
+    style={styles.button}
+    disabled={currentAccountIndex === index}
+  >
+    wallet {index + 1}
+  </Button>
+))}
 
       <Button mode="contained" onPress={handleSendPress} style={styles.button}>
         Send {currencyByNetwork[network]}

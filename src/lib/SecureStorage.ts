@@ -2,7 +2,7 @@
 
 import * as Keychain from 'react-native-keychain';
 
-const SERVICE_NAME = 'myApp'; // базовое имя сервиса
+const SERVICE_NAME = 'myApp'; 
 
 type KeychainAccount = 'is_registered' | 'first_run' | 'seed_phrase';
 
