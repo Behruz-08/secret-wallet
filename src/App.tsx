@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function App() {
   return (
-    <PaperProvider>
+    <PaperProvider >
     <NavigationContainer>
     <Stack.Navigator initialRouteName="Registration">
           <Stack.Screen

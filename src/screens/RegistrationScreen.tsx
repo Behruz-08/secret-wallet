@@ -9,6 +9,9 @@ import { markFirstRun } from '../lib/SecureStorage';
 
 
 const RegistrationScreen = () => {
+
+   
+
     const {
         isInitialized,
         currentAccount,
@@ -23,8 +26,23 @@ const RegistrationScreen = () => {
     const handleCreateWallet = async () => {
         await markFirstRun();
         const phrase = await createNewWallet();
+        console.log(phrase);
+        
         setBackupPhrase(phrase);
     };
+
+    if (!isInitialized) {return <Loading />;}
+
+  
+    if (backupPhrase) {
+        return (
+          <BackupPhraseView
+            phrase={backupPhrase}
+            onConfirm={() => setBackupPhrase('')}
+          />
+        );
+      }
+      
 
     // Восстановление кошелька
     const handleRestore = async (phrase: string) => {
